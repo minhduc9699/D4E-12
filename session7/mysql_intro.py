@@ -1,41 +1,37 @@
 import pymysql
+from pymongo import MongoClient
+from bson import ObjectId
+
+mongo_client = MongoClient()
+
+db = mongo_client.get_database('techkids-edu-crm-dev')
+lead_collection = db.get_collection('leads')
+contact_collection = db.get_collection('v2contacts')
 
 client = pymysql.connect(
   host='localhost',
   user='root',
-  password='@gmail.com'
+  password='@gmail.com',
+  cursorclass=pymysql.cursors.DictCursor
 )
 
 cursor = client.cursor()
 
 # cursor.execute('CREATE DATABASE d4e12')
 
-cursor.execute(
-  '''
-    CREATE TABLE IF NOT EXISTS d4e12.cake (
-    name VARCHAR(255) PRIMARY KEY,
-    calor_rate INT(11)
-  )
-  '''
-)
+cursor.execute('''
+  SELECT COUNT(*) AS total, lead_id from `crm-bi-database-dev`.contact
+  GROUP BY lead_id;
+''')
 
-cursor.execute( 
-  '''
-     CREATE TABLE IF NOT EXISTS d4e12.ingredient ( 
-      name VARCHAR(255) PRIMARY KEY,
-      cake_name VARCHAR(255) UNIQUE REFERENCES d4e12.cake(name)
-    )
-  '''
-)
+query = {}
 
-cake_name = 'otga'
-
-cursor.execute( # string formating
-  f'''
-    INSERT INTO d4e12.cake(name, calor_rate)
-    VALUES ('{cake_name}', 3000), ('agto', 6000)
-  '''
-)
-
-
-client.commit()
+res = cursor.fetchall()
+count = 0
+for r in res:
+  query['_id'] = ObjectId(r['lead_id'])
+  contact_found = contact_collection.find_one(query)
+  if not contact_found:
+    print(r)
+    count += 1
+print(count)
